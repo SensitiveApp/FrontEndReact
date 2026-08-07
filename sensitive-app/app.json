@@ -13,18 +13,17 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/Sensitive-logo-2-transparentbg.png"
       },
       "config": {
         "googleMaps": {
-          "apikey": "AIzaSyBznKKQ-d0hV6MpjW5eaq5odJ_YetrezSI"
+          "apiKey": "AIzaSyBznKKQ-d0hV6MpjW5eaq5odJ_YetrezSI"
         }
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sensitive_dev.sensitiveapp"
     },
     "web": {
       "output": "static",
@@ -48,6 +47,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "58585eeb-b769-4e22-8157-8807165c3263"
+      }
     }
   }
 }

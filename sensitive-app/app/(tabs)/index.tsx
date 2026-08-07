@@ -8,7 +8,7 @@ import MapView, { Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import SearchBar, { Suggestion } from '../../components/SearchBar';
 
-const API_URL = "http://192.168.1.129:8000";
+const API_URL = "https://api.zebaguette.xyz";
 
 type MapPoint = { latitude: number; longitude: number; avg_noise: number | null; avg_crowd: number | null };
 type ClusteredPoint = MapPoint & { radius: number };
