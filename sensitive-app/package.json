@@ -40,10 +40,18 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/gitlab": "^13.3.3",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/react": "~19.1.0",
-    "typescript": "~5.9.2",
     "eslint": "^9.25.0",
-    "eslint-config-expo": "~10.0.0"
+    "eslint-config-expo": "~10.0.0",
+    "semantic-release": "^25.0.9",
+    "semantic-release-expo": "^2.2.3",
+    "typescript": "~5.9.2"
   },
   "private": true
 }
