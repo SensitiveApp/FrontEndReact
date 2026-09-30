@@ -4,7 +4,7 @@
     "slug": "sensitive-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Sensitive-logo-2-transparentbg.png",
     "scheme": "sensitiveapp",
     "userInterfaceStyle": "light",
     "android": {
@@ -26,21 +26,17 @@
       ]
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/Sensitive-logo-2-transparentbg.png",
+          "imageWidth": 350,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#ffffff"
         }
       ],
       "expo-font",
