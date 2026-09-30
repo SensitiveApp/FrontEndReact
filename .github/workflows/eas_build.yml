@@ -1,5 +1,11 @@
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Profil EAS (production = AAB pour le Play Store, preview = APK de test)
+        type: choice
+        options: [production, preview]
+        default: production
   push:
     tags:
       - 'v*'
@@ -26,4 +32,4 @@ jobs:
         run: npm ci
 
       - name: 🚀 Build app
-        run: eas build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile ${{ inputs.profile || 'production' }} --non-interactive

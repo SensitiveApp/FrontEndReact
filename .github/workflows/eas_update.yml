@@ -1,7 +1,10 @@
 on:
-  push:
-    branches:
-      - main
+  # Manuel : une mise à jour OTA part directement chez les utilisateurs du Play Store
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Description de la mise à jour
+        required: true
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -27,4 +30,4 @@ jobs:
         run: npm ci
 
       - name: 🚀 Create update
-        run: eas update --auto --non-interactive --platform android
+        run: eas update --channel production --message "${{ inputs.message }}" --non-interactive --platform android

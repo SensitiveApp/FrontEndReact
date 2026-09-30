@@ -3,14 +3,6 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
-  mapPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    backgroundColor: '#f2f2f7',
-  },
-  mapPlaceholderText: { fontSize: 15, color: '#666' },
 
   // ── Backdrop ────────────────────────────────────────────────────────────────
   backdrop: {

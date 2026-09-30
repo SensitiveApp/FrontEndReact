@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated, Easing, Image, ImageSourcePropType, ImageStyle, Keyboard,
+  Linking,
   Modal,
   StyleProp, StyleSheet, Text,
   TouchableOpacity,
@@ -17,6 +18,11 @@ import SearchBar, { Suggestion } from '../../components/SearchBar';
 
 const API_URL = "https://api.zebaguette.xyz";
 
+// Centre de la carte si la localisation est refusée ou indisponible (Paris)
+const DEFAULT_CENTER = { latitude: 48.8566, longitude: 2.3522 };
+const INITIAL_DELTA = 0.02;
+
+type LatLng = { latitude: number; longitude: number };
 type MapPoint = { latitude: number; longitude: number; avg_noise: number | null; avg_crowd: number | null };
 type ClusteredPoint = MapPoint & { radius: number };
 
@@ -172,19 +178,28 @@ const LevelSlider: React.FC<LevelSliderProps> = ({ value, onChange, color, image
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [mapData, setMapData] = useState([]);
+  const [mapData, setMapData] = useState<MapPoint[]>([]);
   const [filter, setFilter] = useState('both');
   const [modalVisible, setModalVisible] = useState(false);
   const [noiseInput, setNoiseInput] = useState('1');
   const [crowdInput, setCrowdInput] = useState('1');
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Position de l'utilisateur (null si localisation refusée)
+  const [location, setLocation] = useState<LatLng | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [maxLevel, setMaxLevel] = useState<number | null>(null);
   const [levelModalVisible, setLevelModalVisible] = useState(false);
-  const [latitudeDelta, setLatitudeDelta] = useState(0.02);
+  const [latitudeDelta, setLatitudeDelta] = useState(INITIAL_DELTA);
   const mapRef = useRef<MapView>(null);
+  // Dernière région affichée, pour recharger la zone visible
+  const regionRef = useRef({ ...DEFAULT_CENTER, latitudeDelta: INITIAL_DELTA });
+  // Les déplacements demandés avant que la carte soit prête sont appliqués dans onMapReady
+  const mapReadyRef = useRef(false);
+  const pendingCenterRef = useRef<LatLng | null>(null);
+  // Vrai dès que l'utilisateur a déplacé la carte ou cherché un lieu : on ne le recentre plus de force
+  const userMovedMapRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -288,41 +303,86 @@ export default function App() {
   };
 
   // ── Localisation & données ────────────────────────────────────────────────
+  const centerMapOn = (center: LatLng) => {
+    const region = { ...center, latitudeDelta: INITIAL_DELTA, longitudeDelta: INITIAL_DELTA };
+    if (mapReadyRef.current) mapRef.current?.animateToRegion(region, 0);
+    else pendingCenterRef.current = center;
+    regionRef.current = { ...center, latitudeDelta: INITIAL_DELTA };
+    fetchMapData(center.latitude, center.longitude, INITIAL_DELTA);
+  };
+
+  const onMapReady = () => {
+    mapReadyRef.current = true;
+    const center = pendingCenterRef.current ?? DEFAULT_CENTER;
+    pendingCenterRef.current = null;
+    if (center !== DEFAULT_CENTER) {
+      mapRef.current?.animateToRegion({ ...center, latitudeDelta: INITIAL_DELTA, longitudeDelta: INITIAL_DELTA }, 0);
+    }
+    fetchMapData(center.latitude, center.longitude, INITIAL_DELTA);
+  };
+
   useEffect(() => {
     let subscription: { remove: () => void } | undefined;
     let cancelled = false;
+    // La carte est affichée tout de suite sur DEFAULT_CENTER, puis recentrée
+    // sur l'utilisateur dès que sa position est connue.
+    const centerOnUser = (coords: LatLng) => {
+      setLocation(coords);
+      if (!userMovedMapRef.current) centerMapOn(coords);
+    };
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Erreur', 'Permission de localisation refusée'); return; }
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+      if (cancelled) return;
+      // Sans localisation, la carte reste consultable autour de DEFAULT_CENTER
+      if (status !== 'granted') {
+        // Après deux refus, Android n'affiche plus la demande : il faut passer par les réglages
+        Alert.alert(
+          'Localisation désactivée',
+          'Vous pouvez explorer la carte, mais la localisation est nécessaire pour noter un lieu.',
+          canAskAgain
+            ? [{ text: 'OK' }]
+            : [{ text: 'Plus tard', style: 'cancel' }, { text: 'Ouvrir les réglages', onPress: () => Linking.openSettings() }],
+        );
+        return;
+      }
+      // Dernière position connue : instantanée, permet de centrer la carte sans attendre le GPS
+      const last = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (cancelled) return;
+      if (last) centerOnUser({ latitude: last.coords.latitude, longitude: last.coords.longitude });
       // watchPositionAsync ne déclenche son callback qu'après un déplacement de
-      // distanceInterval mètres : sans ce premier point, la carte ne s'affiche jamais.
+      // distanceInterval mètres : on récupère donc d'abord la position actuelle.
       try {
         const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (cancelled) return;
-        setLocation(initial.coords);
-        fetchMapData(initial.coords.latitude, initial.coords.longitude);
+        centerOnUser({ latitude: initial.coords.latitude, longitude: initial.coords.longitude });
       } catch {
-        Alert.alert('Erreur', 'Impossible de récupérer votre position.');
+        if (cancelled) return;
+        if (!last) Alert.alert('Erreur', 'Impossible de récupérer votre position.');
         return;
       }
+      // Met seulement à jour la position : les données suivent la zone affichée
+      // (onRegionChangeComplete), pas les déplacements de l'utilisateur.
       subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
-        (loc) => { setLocation(loc.coords); fetchMapData(loc.coords.latitude, loc.coords.longitude); },
+        (loc) => setLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude }),
       );
+      if (cancelled) subscription.remove();
     })();
     return () => { cancelled = true; subscription?.remove(); };
   }, []);
 
-  const fetchMapData = (lat: number, lon: number) => {
+  const fetchMapData = (lat: number, lon: number, delta: number) => {
     if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
     fetchDebounceRef.current = setTimeout(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       try {
-        const radius = Math.max(2, latitudeDelta * 111);
+        const radius = Math.max(2, delta * 111);
         const response = await fetch(`${API_URL}/map-data/?lat=${lat}&lon=${lon}&radius_km=${radius}`, { signal: controller.signal });
         clearTimeout(timeout);
-        setMapData(await response.json());
+        if (!response.ok) { console.warn(`fetchMapData: HTTP ${response.status}`); return; }
+        const data = await response.json();
+        if (Array.isArray(data)) setMapData(data);
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') { console.warn('fetchMapData timed out'); return; }
         console.error('Erreur Fetch:', error);
@@ -331,14 +391,15 @@ export default function App() {
   };
 
   const submitEvaluation = async () => {
-    if (!location) return;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    if (!location || submitting) return;
     const noise = noiseInput ? parseInt(noiseInput) : null;
     const crowd = crowdInput ? parseInt(crowdInput) : null;
     if (noise !== null && (isNaN(noise) || noise < 1 || noise > 5)) { Alert.alert('Erreur', 'Le niveau de bruit doit être entre 1 et 5.'); return; }
     if (crowd !== null && (isNaN(crowd) || crowd < 1 || crowd > 5)) { Alert.alert('Erreur', 'Le niveau de foule doit être entre 1 et 5.'); return; }
     if (noise === null && crowd === null) { Alert.alert('Erreur', 'Remplis au moins un champ.'); return; }
+    setSubmitting(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
       const response = await fetch(`${API_URL}/evaluations/`, {
         method: 'POST',
@@ -356,11 +417,15 @@ export default function App() {
       setModalVisible(false);
       setNoiseInput('1');
       setCrowdInput('1');
-      fetchMapData(location.latitude, location.longitude);
+      const { latitude, longitude, latitudeDelta: delta } = regionRef.current;
+      fetchMapData(latitude, longitude, delta);
       showToast("Merci d'avoir noté ce lieu 👍");
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') { Alert.alert('Erreur', 'La requête a expiré. Vérifiez votre connexion.'); return; }
       Alert.alert('Erreur', "Impossible d'envoyer les données.");
+    } finally {
+      clearTimeout(timeout);
+      setSubmitting(false);
     }
   };
 
@@ -391,14 +456,15 @@ export default function App() {
     const timeout = setTimeout(() => controller.abort(), 8000);
     setSearchQuery(description);
     setSuggestions([]);
+    userMovedMapRef.current = true;
     try {
       const response = await fetch(`${API_URL}/places/details/?place_id=${placeId}`, { signal: controller.signal });
       clearTimeout(timeout);
       const data = await response.json();
       if (data.status === 'OK') {
         const { lat, lng } = data.result.geometry.location;
-        mapRef.current?.animateToRegion({ latitude: lat, longitude: lng, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 800);
-        fetchMapData(lat, lng);
+        mapRef.current?.animateToRegion({ latitude: lat, longitude: lng, latitudeDelta: INITIAL_DELTA, longitudeDelta: INITIAL_DELTA }, 800);
+        fetchMapData(lat, lng, INITIAL_DELTA);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') { Alert.alert('Erreur', 'La recherche a expiré. Vérifiez votre connexion.'); return; }
@@ -413,8 +479,9 @@ export default function App() {
       const results = await Location.geocodeAsync(searchQuery);
       if (results.length === 0) { Alert.alert('Introuvable', 'Adresse non trouvée.'); return; }
       const { latitude, longitude } = results[0];
-      mapRef.current?.animateToRegion({ latitude, longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 800);
-      fetchMapData(latitude, longitude);
+      userMovedMapRef.current = true;
+      mapRef.current?.animateToRegion({ latitude, longitude, latitudeDelta: INITIAL_DELTA, longitudeDelta: INITIAL_DELTA }, 800);
+      fetchMapData(latitude, longitude, INITIAL_DELTA);
     } catch { Alert.alert('Erreur', 'Impossible de rechercher cette adresse.'); }
   };
 
@@ -432,45 +499,43 @@ export default function App() {
     <View style={styles.container}>
 
       {/* Carte */}
-      {!location && (
-        <View style={styles.mapPlaceholder}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.mapPlaceholderText}>Localisation en cours…</Text>
-        </View>
-      )}
-      {location && (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          showsUserLocation={true}
-          userInterfaceStyle="light"
-          mapPadding={{ top: insets.top + 68, right: 0, bottom: 0, left: 0 }}
-          initialRegion={{ latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
-          onPress={() => { Keyboard.dismiss(); if (fabMenuMounted) closeFab(); }}
-          onRegionChangeComplete={(reg) => { setLatitudeDelta(reg.latitudeDelta); fetchMapData(reg.latitude, reg.longitude); }}
-        >
-          {clusterMapData(mapData, latitudeDelta).map((point: ClusteredPoint, index: number) => {
-            let displayValue: number | null = null;
-            if (filter === 'noise') displayValue = point.avg_noise ?? null;
-            else if (filter === 'crowd') displayValue = point.avg_crowd ?? null;
-            else {
-              const values = [point.avg_noise, point.avg_crowd].filter((v): v is number => v != null);
-              displayValue = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
-            }
-            if (displayValue === null) return null;
-            if (maxLevel !== null && displayValue > maxLevel) return null;
-            return (
-              <Circle
-                key={index}
-                center={{ latitude: point.latitude, longitude: point.longitude }}
-                radius={point.radius}
-                fillColor={getColor(displayValue)}
-                strokeWidth={0}
-              />
-            );
-          })}
-        </MapView>
-      )}
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        showsUserLocation={location !== null}
+        userInterfaceStyle="light"
+        mapPadding={{ top: insets.top + 68, right: 0, bottom: 0, left: 0 }}
+        initialRegion={{ ...DEFAULT_CENTER, latitudeDelta: INITIAL_DELTA, longitudeDelta: INITIAL_DELTA }}
+        onMapReady={onMapReady}
+        onPanDrag={() => { userMovedMapRef.current = true; }}
+        onPress={() => { Keyboard.dismiss(); if (fabMenuMounted) closeFab(); }}
+        onRegionChangeComplete={(reg) => {
+          regionRef.current = { latitude: reg.latitude, longitude: reg.longitude, latitudeDelta: reg.latitudeDelta };
+          setLatitudeDelta(reg.latitudeDelta);
+          fetchMapData(reg.latitude, reg.longitude, reg.latitudeDelta);
+        }}
+      >
+        {clusterMapData(mapData, latitudeDelta).map((point: ClusteredPoint, index: number) => {
+          let displayValue: number | null = null;
+          if (filter === 'noise') displayValue = point.avg_noise ?? null;
+          else if (filter === 'crowd') displayValue = point.avg_crowd ?? null;
+          else {
+            const values = [point.avg_noise, point.avg_crowd].filter((v): v is number => v != null);
+            displayValue = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+          }
+          if (displayValue === null) return null;
+          if (maxLevel !== null && displayValue > maxLevel) return null;
+          return (
+            <Circle
+              key={index}
+              center={{ latitude: point.latitude, longitude: point.longitude }}
+              radius={point.radius}
+              fillColor={getColor(displayValue)}
+              strokeWidth={0}
+            />
+          );
+        })}
+      </MapView>
 
       {/* Barre de recherche */}
       <SearchBar
@@ -524,7 +589,10 @@ export default function App() {
             {/* Nouvelle Note */}
             <SpeedDialItem
               icon="✏️"
-              onPress={() => closeFab(() => setModalVisible(true))}
+              onPress={() => closeFab(() => {
+                if (location) setModalVisible(true);
+                else Alert.alert('Localisation requise', 'Activez la localisation dans les réglages pour noter un lieu.');
+              })}
               anim={item1Anim}
             />
             <View style={{ height: 12 }} />
@@ -615,8 +683,10 @@ export default function App() {
               images={NOISE_LEVEL_IMAGES}
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.submitBtn} onPress={submitEvaluation}>
-                <Text style={{ color: 'white', fontWeight: 'bold' }}>Valider</Text>
+              <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={submitEvaluation} disabled={submitting}>
+                {submitting
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <Text style={{ color: 'white', fontWeight: 'bold' }}>Valider</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setNoiseInput('1'); setCrowdInput('1'); }}>
                 <Text style={{ color: 'red', fontWeight: 'bold' }}>Annuler</Text>
