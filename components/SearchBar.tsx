@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { Palette, usePalette } from '@/constants/colors';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TextInput,
@@ -27,8 +28,6 @@ interface SearchBarProps {
   style?: ViewStyle;
 }
 
-const PRIMARY = '#007AFF';
-
 export default function SearchBar({
   value,
   onChangeText,
@@ -38,16 +37,18 @@ export default function SearchBar({
   onSelectSuggestion,
   style,
 }: SearchBarProps) {
+  const colors = usePalette();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [focused, setFocused] = useState(false);
 
   return (
     <View style={[styles.wrapper, style]}>
       <View style={[styles.inputRow, focused && styles.inputRowFocused]}>
-        <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
+        <Ionicons name="search" size={18} color={colors.placeholder} style={styles.searchIcon} />
         <TextInput
           style={styles.input}
           placeholder="Rechercher un lieu, une adresse..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.placeholder}
           value={value}
           onChangeText={onChangeText}
           onSubmitEditing={onSubmit}
@@ -61,7 +62,7 @@ export default function SearchBar({
             onPress={onClear}
             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
           >
-            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            <Ionicons name="close-circle" size={18} color={colors.placeholder} />
           </TouchableOpacity>
         )}
       </View>
@@ -81,7 +82,7 @@ export default function SearchBar({
               <Ionicons
                 name="location-outline"
                 size={16}
-                color="#9CA3AF"
+                color={colors.placeholder}
                 style={styles.suggestionIcon}
               />
               <View style={styles.suggestionTextWrapper}>
@@ -110,7 +111,7 @@ const CARD_SHADOW = {
   elevation: 3,
 } as const;
 
-const styles = StyleSheet.create({
+const createStyles = (c: Palette) => StyleSheet.create({
   wrapper: {
     position: 'absolute',
     left: 16,
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.surface,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 11,
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
     ...CARD_SHADOW,
   },
   inputRowFocused: {
-    borderColor: PRIMARY,
+    borderColor: c.primary,
   },
   searchIcon: {
     marginRight: 8,
@@ -137,12 +138,12 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    color: c.text,
     paddingVertical: 0,
   },
   dropdown: {
     marginTop: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.surface,
     borderRadius: 14,
     overflow: 'hidden',
     ...CARD_SHADOW,
@@ -155,10 +156,10 @@ const styles = StyleSheet.create({
   },
   suggestionBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: c.border,
   },
   suggestionPressed: {
-    backgroundColor: '#F5F7FA',
+    backgroundColor: c.surfacePressed,
   },
   suggestionIcon: {
     marginRight: 10,
@@ -170,11 +171,11 @@ const styles = StyleSheet.create({
   suggestionMain: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: c.text,
   },
   suggestionSub: {
     fontSize: 12,
-    color: '#6B7280',
+    color: c.textMuted,
     marginTop: 1,
   },
 });

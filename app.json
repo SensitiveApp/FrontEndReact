@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/Sensitive-logo-2-transparentbg.png",
     "scheme": "sensitiveapp",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -36,7 +36,10 @@
           "image": "./assets/images/Sensitive-logo-2-transparentbg.png",
           "imageWidth": 350,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
         }
       ],
       "expo-font",

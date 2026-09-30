@@ -1,12 +1,20 @@
+import { Palette, usePalette } from '@/constants/colors';
+import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 
-export const styles = StyleSheet.create({
+// Styles de l'écran carte, recalculés quand le téléphone passe en clair / sombre
+export function useMapStyles() {
+  const colors = usePalette();
+  return useMemo(() => createStyles(colors), [colors]);
+}
+
+const createStyles = (c: Palette) => StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
 
   // ── Backdrop ────────────────────────────────────────────────────────────────
   backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: c.backdrop,
   },
 
   // ── Speed Dial container ─────────────────────────────────────────────────
@@ -22,7 +30,7 @@ export const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'white',
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
@@ -46,7 +54,7 @@ export const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'white',
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -56,7 +64,7 @@ export const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   sdBtnActive: {
-    backgroundColor: '#E8F2FF',
+    backgroundColor: c.surfaceActive,
   },
   sdBtnIcon: { fontSize: 22 },
   sdBtnImage: { 
@@ -74,7 +82,7 @@ export const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'white',
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,
@@ -84,7 +92,7 @@ export const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   sdChipActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: c.primary,
   },
   sdChipIcon: { fontSize: 18 },
   sdChipImage: { 
@@ -104,7 +112,7 @@ export const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 4,
-    backgroundColor: 'white',
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
@@ -114,55 +122,55 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     zIndex: 10,
   },
-  levelFilterBtnText: { fontSize: 16, fontWeight: 'bold', color: '#555' },
-  levelFilterBtnTextActive: { color: '#007AFF' },
+  levelFilterBtnText: { fontSize: 16, fontWeight: 'bold', color: c.textSecondary },
+  levelFilterBtnTextActive: { color: c.primary },
 
   // ── Toast ────────────────────────────────────────────────────────────────
   toast: {
     position: 'absolute',
     alignSelf: 'center',
-    backgroundColor: 'rgba(32,56,64,0.92)',
+    backgroundColor: c.toastBackground,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
   },
-  toastText: { color: 'white', fontSize: 14, fontWeight: '600' },
+  toastText: { color: c.toastText, fontSize: 14, fontWeight: '600' },
 
   // ── Modals ───────────────────────────────────────────────────────────────
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: c.modalOverlay,
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: c.surface,
     margin: 30,
     padding: 25,
     borderRadius: 15,
   },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#333' },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: c.text },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, color: c.text },
   ratingRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   ratingBtn: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#eee', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.surfaceMuted, alignItems: 'center', justifyContent: 'center',
   },
-  ratingBtnActive: { backgroundColor: '#007AFF' },
-  ratingBtnText: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  ratingBtnTextActive: { color: 'white' },
+  ratingBtnActive: { backgroundColor: c.primary },
+  ratingBtnText: { fontSize: 18, fontWeight: 'bold', color: c.text },
+  ratingBtnTextActive: { color: c.onPrimary },
   levelSliderBlock: { marginBottom: 20 },
   levelSliderImageBox: { height: 72, alignItems: 'center', justifyContent: 'center', marginVertical: 6 },
   levelSliderImage: { width: 72, height: 72, resizeMode: 'contain' },
   levelSlider: { width: '100%', height: 40 },
   levelSliderTicks: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12 },
-  levelSliderTick: { fontSize: 12, color: '#999' },
+  levelSliderTick: { fontSize: 12, color: c.textMuted },
   modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   submitBtn: {
-    backgroundColor: '#007AFF', padding: 15, borderRadius: 10,
+    backgroundColor: c.primary, padding: 15, borderRadius: 10,
     flex: 1, marginRight: 5, alignItems: 'center',
   },
   cancelBtn: {
     padding: 15, borderRadius: 10, flex: 1, marginLeft: 5,
-    alignItems: 'center', borderWidth: 1, borderColor: 'red',
+    alignItems: 'center', borderWidth: 1, borderColor: c.danger,
   },
 });

@@ -1,4 +1,6 @@
-import { styles } from '@/styles/map-screen';
+import { usePalette } from '@/constants/colors';
+import { DARK_MAP_STYLE } from '@/constants/map-dark-style';
+import { useMapStyles } from '@/styles/map-screen';
 import Slider from '@react-native-community/slider';
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
@@ -9,6 +11,7 @@ import {
   Linking,
   Modal,
   StyleProp, StyleSheet, Text,
+  useColorScheme,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -78,23 +81,26 @@ type SpeedDialItemProps = {
   iconStyle?: StyleProp<ImageStyle>;
 };
 
-const SpeedDialItem: React.FC<SpeedDialItemProps> = ({ icon, onPress, anim, active, iconStyle }) => (
-  <Animated.View
-    style={[
-      styles.sdRow,
-      {
-        opacity: anim,
-        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
-      },
-    ]}
-  >
-    <TouchableOpacity onPress={onPress} style={[styles.sdBtn, active && styles.sdBtnActive]} activeOpacity={0.8}>
-      {typeof icon === 'string'
-        ? <Text style={styles.sdBtnIcon}>{icon}</Text>
-        : <Image source={icon} style={[styles.sdBtnImage, iconStyle]} />}
-    </TouchableOpacity>
-  </Animated.View>
-);
+const SpeedDialItem: React.FC<SpeedDialItemProps> = ({ icon, onPress, anim, active, iconStyle }) => {
+  const styles = useMapStyles();
+  return (
+    <Animated.View
+      style={[
+        styles.sdRow,
+        {
+          opacity: anim,
+          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+        },
+      ]}
+    >
+      <TouchableOpacity onPress={onPress} style={[styles.sdBtn, active && styles.sdBtnActive]} activeOpacity={0.8}>
+        {typeof icon === 'string'
+          ? <Text style={styles.sdBtnIcon}>{icon}</Text>
+          : <Image source={icon} style={[styles.sdBtnImage, iconStyle]} />}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 // ─── FilterChip ───────────────────────────────────────────────────────────────
 // Sous-option de filtre (foule / bruit / Sensitive), taille réduite
@@ -106,23 +112,26 @@ type FilterChipProps = {
   iconStyle?: StyleProp<ImageStyle>;
 };
 
-const FilterChip: React.FC<FilterChipProps> = ({ icon, active, onPress, anim, iconStyle }) => (
-  <Animated.View
-    style={[
-      styles.sdRow,
-      {
-        opacity: anim,
-        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-      },
-    ]}
-  >
-    <TouchableOpacity onPress={onPress} style={[styles.sdChip, active && styles.sdChipActive]} activeOpacity={0.8}>
-      {typeof icon === 'string'
-        ? <Text style={styles.sdChipIcon}>{icon}</Text>
-        : <Image source={icon} style={[styles.sdChipImage, iconStyle]} />}
-    </TouchableOpacity>
-  </Animated.View>
-);
+const FilterChip: React.FC<FilterChipProps> = ({ icon, active, onPress, anim, iconStyle }) => {
+  const styles = useMapStyles();
+  return (
+    <Animated.View
+      style={[
+        styles.sdRow,
+        {
+          opacity: anim,
+          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+        },
+      ]}
+    >
+      <TouchableOpacity onPress={onPress} style={[styles.sdChip, active && styles.sdChipActive]} activeOpacity={0.8}>
+        {typeof icon === 'string'
+          ? <Text style={styles.sdChipIcon}>{icon}</Text>
+          : <Image source={icon} style={[styles.sdChipImage, iconStyle]} />}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 // ─── LevelSlider ──────────────────────────────────────────────────────────────
 // Curseur 1-5 avec l'image correspondant au niveau sélectionné
@@ -149,6 +158,8 @@ type LevelSliderProps = {
 };
 
 const LevelSlider: React.FC<LevelSliderProps> = ({ value, onChange, color, images }) => {
+  const styles = useMapStyles();
+  const colors = usePalette();
   const level = parseInt(value);
   return (
     <View style={styles.levelSliderBlock}>
@@ -163,7 +174,7 @@ const LevelSlider: React.FC<LevelSliderProps> = ({ value, onChange, color, image
         value={level}
         onValueChange={(v) => onChange(String(Math.round(v)))}
         minimumTrackTintColor={color}
-        maximumTrackTintColor="#ddd"
+        maximumTrackTintColor={colors.sliderTrack}
         thumbTintColor={color}
         tapToSeek
       />
@@ -178,6 +189,9 @@ const LevelSlider: React.FC<LevelSliderProps> = ({ value, onChange, color, image
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const styles = useMapStyles();
+  const colors = usePalette();
+  const isDark = useColorScheme() === 'dark';
   const [mapData, setMapData] = useState<MapPoint[]>([]);
   const [filter, setFilter] = useState('both');
   const [modalVisible, setModalVisible] = useState(false);
@@ -503,7 +517,8 @@ export default function App() {
         ref={mapRef}
         style={styles.map}
         showsUserLocation={location !== null}
-        userInterfaceStyle="light"
+        userInterfaceStyle={isDark ? 'dark' : 'light'}
+        customMapStyle={isDark ? DARK_MAP_STYLE : []}
         mapPadding={{ top: insets.top + 68, right: 0, bottom: 0, left: 0 }}
         initialRegion={{ ...DEFAULT_CENTER, latitudeDelta: INITIAL_DELTA, longitudeDelta: INITIAL_DELTA }}
         onMapReady={onMapReady}
@@ -658,7 +673,7 @@ export default function App() {
             </View>
             {maxLevel !== null && (
               <TouchableOpacity onPress={() => { setMaxLevel(null); setLevelModalVisible(false); }} style={{ alignItems: 'center', paddingTop: 8 }}>
-                <Text style={{ color: 'red', fontSize: 14 }}>Annuler le filtre</Text>
+                <Text style={{ color: colors.danger, fontSize: 14 }}>Annuler le filtre</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -673,23 +688,23 @@ export default function App() {
             <LevelSlider
               value={crowdInput}
               onChange={setCrowdInput}
-              color="#45a9a7"
+              color={colors.crowdAccent}
               images={CROWD_LEVEL_IMAGES}
             />
             <LevelSlider
               value={noiseInput}
               onChange={setNoiseInput}
-              color="#203840"
+              color={colors.noiseAccent}
               images={NOISE_LEVEL_IMAGES}
             />
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={submitEvaluation} disabled={submitting}>
                 {submitting
-                  ? <ActivityIndicator size="small" color="white" />
-                  : <Text style={{ color: 'white', fontWeight: 'bold' }}>Valider</Text>}
+                  ? <ActivityIndicator size="small" color={colors.onPrimary} />
+                  : <Text style={{ color: colors.onPrimary, fontWeight: 'bold' }}>Valider</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setNoiseInput('1'); setCrowdInput('1'); }}>
-                <Text style={{ color: 'red', fontWeight: 'bold' }}>Annuler</Text>
+                <Text style={{ color: colors.danger, fontWeight: 'bold' }}>Annuler</Text>
               </TouchableOpacity>
             </View>
           </View>
