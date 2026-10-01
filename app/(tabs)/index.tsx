@@ -80,17 +80,20 @@ type SpeedDialItemProps = {
   anim: Animated.Value;
   active?: boolean;
   iconStyle?: StyleProp<ImageStyle>;
+  // Direction d'apparition : depuis le bas (menu vertical) ou depuis la droite (à côté du MainFAB)
+  slideFrom?: 'below' | 'right';
 };
 
-const SpeedDialItem: React.FC<SpeedDialItemProps> = ({ icon, onPress, anim, active, iconStyle }) => {
+const SpeedDialItem: React.FC<SpeedDialItemProps> = ({ icon, onPress, anim, active, iconStyle, slideFrom = 'below' }) => {
   const styles = useMapStyles();
+  const offset = anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
   return (
     <Animated.View
       style={[
         styles.sdRow,
         {
           opacity: anim,
-          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+          transform: [slideFrom === 'right' ? { translateX: offset } : { translateY: offset }],
         },
       ]}
     >
@@ -640,16 +643,17 @@ export default function App() {
           </>
         )}
 
-        {/* Politique de confidentialité (lien obligatoire pour Google Play) — en haut du menu */}
+        {/* Politique de confidentialité (lien obligatoire pour Google Play) — à gauche du MainFAB.
+            En position absolue : n'élargit pas la colonne du speed dial. */}
         {fabMenuMounted && (
-          <>
-            <View style={{ height: 12 }} />
+          <View style={styles.sdSideItem}>
             <SpeedDialItem
               icon="ℹ️"
               onPress={() => closeFab(() => { Linking.openURL(PRIVACY_URL); })}
               anim={item3Anim}
+              slideFrom="right"
             />
-          </>
+          </View>
         )}
 
       </View>

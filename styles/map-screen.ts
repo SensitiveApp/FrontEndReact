@@ -63,6 +63,12 @@ const createStyles = (c: Palette) => StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 8,
   },
+  // Bouton à gauche du MainFAB (64px) : 12px d'écart, centré verticalement ((64 - 52) / 2 = 6)
+  sdSideItem: {
+    position: 'absolute',
+    right: 64 + 12,
+    bottom: 6,
+  },
   sdBtnActive: {
     backgroundColor: c.surfaceActive,
   },
