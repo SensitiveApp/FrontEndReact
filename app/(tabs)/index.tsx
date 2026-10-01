@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SearchBar, { Suggestion } from '../../components/SearchBar';
 
 const API_URL = "https://api.zebaguette.xyz";
+const PRIVACY_URL = `${API_URL}/privacy`;
 
 // Centre de la carte si la localisation est refusée ou indisponible (Paris)
 const DEFAULT_CENTER = { latitude: 48.8566, longitude: 2.3522 };
@@ -225,6 +226,7 @@ export default function App() {
   // Items du menu principal
   const item1Anim = useRef(new Animated.Value(0)).current; // Nouvelle Note
   const item2Anim = useRef(new Animated.Value(0)).current; // Affichage Carte
+  const item3Anim = useRef(new Animated.Value(0)).current; // Confidentialité
   // Sous-items filtres
   const fi1Anim = useRef(new Animated.Value(0)).current;   // Foule
   const fi2Anim = useRef(new Animated.Value(0)).current;   // Bruit
@@ -257,12 +259,14 @@ export default function App() {
   const openFab = () => {
     item1Anim.setValue(0);
     item2Anim.setValue(0);
+    item3Anim.setValue(0);
     setFabMenuMounted(true);
     Animated.parallel([
       Animated.spring(fabRotateAnim, { toValue: 1, useNativeDriver: true, tension: 120, friction: 8 }),
       Animated.stagger(70, [
         Animated.spring(item1Anim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
         Animated.spring(item2Anim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+        Animated.spring(item3Anim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
       ]),
     ]).start();
   };
@@ -272,6 +276,7 @@ export default function App() {
       Animated.timing(fabRotateAnim, { toValue: 0, duration: 200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
       Animated.timing(item1Anim,     { toValue: 0, duration: 140, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
       Animated.timing(item2Anim,     { toValue: 0, duration: 140, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+      Animated.timing(item3Anim,     { toValue: 0, duration: 140, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
       Animated.timing(fi1Anim,       { toValue: 0, duration: 110, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
       Animated.timing(fi2Anim,       { toValue: 0, duration: 110, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
       Animated.timing(fi3Anim,       { toValue: 0, duration: 110, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
@@ -632,6 +637,18 @@ export default function App() {
             <FilterChip icon={require('../../assets/images/Bruit/speaker_5bar-removebg-preview.png')} iconStyle={styles.sdChipImageSmall} active={filter === 'noise'} onPress={() => applyFilter('noise')} anim={fi2Anim} />
             <View style={{ height: 8 }} />
             <FilterChip icon={require('../../assets/images/noisy_crowd_teal-removebg-preview.png')} active={filter === 'both'}  onPress={() => applyFilter('both')}  anim={fi3Anim} />
+          </>
+        )}
+
+        {/* Politique de confidentialité (lien obligatoire pour Google Play) — en haut du menu */}
+        {fabMenuMounted && (
+          <>
+            <View style={{ height: 12 }} />
+            <SpeedDialItem
+              icon="ℹ️"
+              onPress={() => closeFab(() => { Linking.openURL(PRIVACY_URL); })}
+              anim={item3Anim}
+            />
           </>
         )}
 
