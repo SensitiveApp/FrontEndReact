@@ -12,11 +12,6 @@
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/Sensitive-logo-2-transparentbg.png"
       },
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyBznKKQ-d0hV6MpjW5eaq5odJ_YetrezSI"
-        }
-      },
       "predictiveBackGestureEnabled": false,
       "package": "com.sensitive_dev.sensitiveapp",
       "blockedPermissions": [
